@@ -170,26 +170,30 @@ try:
         distance_thresold = 10
         closest_center = None
 
-        for i, contour in enumerate(contours):
-            area = cv2.contourArea(contour) 
-            if area >= 50: 
-                x, y, ww, hh = cv2.boundingRect(contour) 
-                rect_center_x = int(x + ww / 2) 
-                rect_center_y = int(y + hh / 2) 
-                distance = math.hypot(aimX - rect_center_x, aimY - rect_center_y) 
-                if distance < min_distance and distance > distance_thresold: 
-                    min_distance = distance 
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            if area >= 50:
+                x, y, ww, hh = cv2.boundingRect(contour)
+                rect_center_x = int(x + ww / 2)
+                rect_center_y = int(y + hh / 2)
+                distance = math.hypot(aimX - rect_center_x, aimY - rect_center_y)
+                if distance < min_distance and distance > distance_thresold:
+                    min_distance = distance
                     closest_center = (rect_center_x, rect_center_y)
 
-        # if closest_center: 
-            # cv2.line(frame, (aimX, aimY), closest_center, yellow, 1)
-            # cv2.circle(frame, closest_center, 5, yellow, -1)
-            # cv2.circle(frame, (aimX, aimY), 5, yellow, -1)
+        tolerance = 15
+        if closest_center:
+            dx = closest_center[0] - aimX
+            if dx < -tolerance:
+                TurnLeft()
+            elif dx > tolerance:
+                TurnRight()
+            else:
+                TurnEnginesOn()
 
-        TurnEnginesOn()
-        time.sleep(3)
-        TurnEnginesOff()
-        time.sleep(1)
+            time.sleep(0.5)
+        else:
+            TurnEnginesOff()
 
 except Exception as e:
     print(f"❌ Błąd: {e}")
