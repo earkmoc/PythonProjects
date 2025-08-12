@@ -13,7 +13,7 @@ import Jetson.GPIO as GPIO
 
 # Environment=DISPLAY=:0
 # if bool(os.environ.get("DISPLAY")):
-exit(0)
+# exit(0)
 
 # --- Ustawienia GPIO ---
 IN1 = 29
@@ -190,10 +190,10 @@ try:
                 TurnRight()
             else:
                 TurnEnginesOn()
-
-            time.sleep(0.5)
         else:
-            TurnEnginesOff()
+            TurnEnginesOn()
+
+        time.sleep(1)
 
 except Exception as e:
     print(f"❌ Błąd: {e}")
