@@ -5,7 +5,6 @@
 # sudo systemctl enable myscript.service
 # sudo systemctl start myscript.service
 
-import os
 import cv2
 import time
 import math
