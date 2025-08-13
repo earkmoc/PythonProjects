@@ -15,6 +15,10 @@ import math
 import numpy as np
 import Jetson.GPIO as GPIO
 
+delay_start = 5
+print(f"⏳ Czekam {delay_start} s na stabilizację systemu...")
+time.sleep(delay_start)
+
 log_filename = None
 output_dir = "/home/arkadiusz/Desktop/captured_images"
 os.makedirs(output_dir, exist_ok=True)
@@ -48,6 +52,7 @@ if log_filename is None:
     sys.stderr = log_file
     print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Start sesji, pierwszy plik: {filename}")
 
+print(os.environ.get("DISPLAY"))
 headless = os.environ.get("DISPLAY") is None
 if not headless:
     exit(0)
@@ -217,20 +222,26 @@ try:
                 if distance < min_distance and distance > distance_thresold:
                     min_distance = distance
                     closest_center = (rect_center_x, rect_center_y)
+                    print("countour: ", closest_center, distance)
 
-        tolerance = 15
+        tolerance = 60
         if closest_center:
             dx = closest_center[0] - aimX
+            print(datetime.now().strftime("%H%M%S"), "turning: ", closest_center, dx)
             if dx < -tolerance:
                 TurnLeft()
+                print(datetime.now().strftime("%H%M%S"), "left")
             elif dx > tolerance:
                 TurnRight()
+                print(datetime.now().strftime("%H%M%S"), "right")
             else:
                 TurnEnginesOn()
+                print(datetime.now().strftime("%H%M%S"), "ahead")
         else:
-            TurnEnginesOn()
+            TurnEnginesOff()
+            print(datetime.now().strftime("%H%M%S"), "stop")
 
-        time.sleep(1)
+        # time.sleep(1)
 
 except Exception as e:
     print(f"❌ Błąd: {e}")
