@@ -19,6 +19,9 @@ delay_start = 5
 print(f"⏳ Czekam {delay_start} s na stabilizację systemu...")
 time.sleep(delay_start)
 
+start_time = datetime.now()
+limit_duration = timedelta(minutes=5)
+
 log_filename = None
 output_dir = "/home/arkadiusz/Desktop/captured_images"
 os.makedirs(output_dir, exist_ok=True)
@@ -50,11 +53,9 @@ if log_filename is None:
     log_file = open(log_filename, "a")
     sys.stdout = log_file
     sys.stderr = log_file
-    print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Start sesji, pierwszy plik: {filename}")
+    print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Start sesji")
 
-print(os.environ.get("DISPLAY"))
-headless = os.environ.get("DISPLAY") is None
-if not headless:
+if os.path.exists("/tmp/.X11-unix"):
     exit(0)
 
 # --- Ustawienia GPIO ---
@@ -65,30 +66,36 @@ ENB = 33
 IN3 = 35
 IN4 = 36
 speed = 100
+prevState = "stop"
 
 
 def TurnEnginesOff():
     GPIO.output([IN1, IN2, IN3, IN4], (GPIO.LOW, GPIO.LOW, GPIO.LOW, GPIO.LOW))
+    prevState = "stop"
 
 
 def TurnEnginesOn():
     SetLeftWheels(True)
     SetRightWheels(True)
+    prevState = "start"
 
 
 def TurnEnginesBack():
     SetLeftWheels(False)
     SetRightWheels(False)
+    prevState = "back"
 
 
 def TurnLeft():
     SetLeftWheels(True)
     SetRightWheels(False)
+    prevState = "left"
 
 
 def TurnRight():
     SetLeftWheels(False)
     SetRightWheels(True)
+    prevState = "right"
 
 
 def SetLeftWheels(ahead):
@@ -172,6 +179,10 @@ def CreateFGMask(hsv):
 
 try:
     while True:
+
+        if datetime.now() - start_time >= limit_duration:
+            break
+
         ret, frame = cam.read()
         if not ret or frame is None or frame.size == 0:
             continue
@@ -224,22 +235,33 @@ try:
                     closest_center = (rect_center_x, rect_center_y)
                     print("countour: ", closest_center, distance)
 
-        tolerance = 60
+        tolerance = 30
         if closest_center:
             dx = closest_center[0] - aimX
-            print(datetime.now().strftime("%H%M%S"), "turning: ", closest_center, dx)
+            nowStr = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+            print(nowStr, "turning: ", closest_center, dx)
             if dx < -tolerance:
-                TurnLeft()
-                print(datetime.now().strftime("%H%M%S"), "left")
+                if prevState == "right":
+                    TurnEnginesOn()
+                    print(nowStr, "ahead")
+                    time.sleep(1)
+                else:
+                    TurnLeft()
+                    print(nowStr, "left")
             elif dx > tolerance:
-                TurnRight()
-                print(datetime.now().strftime("%H%M%S"), "right")
+                if prevState == "left":
+                    TurnEnginesOn()
+                    print(nowStr, "ahead")
+                    time.sleep(1)
+                else:
+                    TurnRight()
+                    print(nowStr, "right")
             else:
                 TurnEnginesOn()
-                print(datetime.now().strftime("%H%M%S"), "ahead")
+                print(nowStr, "ahead")
         else:
             TurnEnginesOff()
-            print(datetime.now().strftime("%H%M%S"), "stop")
+            print(nowStr, "stop")
 
         # time.sleep(1)
 
