@@ -5,15 +5,52 @@
 # sudo systemctl enable myscript.service
 # sudo systemctl start myscript.service
 
+import os
+import re
+import sys
 import cv2
 import time
+from datetime import datetime, timedelta
 import math
 import numpy as np
 import Jetson.GPIO as GPIO
 
-# Environment=DISPLAY=:0
-# if bool(os.environ.get("DISPLAY")):
-# exit(0)
+log_filename = None
+output_dir = "/home/arkadiusz/Desktop/captured_images"
+os.makedirs(output_dir, exist_ok=True)
+
+pattern = re.compile(r"^\d{8}_(\d+)_\d{6}\.txt$")
+max_num = 0
+for fname in os.listdir(output_dir):
+    match = pattern.match(fname)
+    if match:
+        num = int(match.group(1))
+        if num > max_num:
+            max_num = num
+
+count4Folder = max_num
+session_date = datetime.now().strftime("%Y%m%d")
+
+count4Folder += 1
+current_time = datetime.now().strftime("%H%M%S")
+filename = os.path.join(output_dir, f"{session_date}_{count4Folder:04d}_{current_time}.jpg")
+
+if log_filename is None:
+    parts = filename.rsplit('_', 2)
+    time_str = parts[2].split('.')[0]
+    time_obj = datetime.strptime(time_str, "%H%M%S") - timedelta(seconds=1)
+    new_time_str = time_obj.strftime("%H%M%S")
+    log_filename = os.path.join(output_dir, f"{parts[0]}_{parts[1]}_{new_time_str}.txt")
+
+    # --- Przekierowanie logów ---
+    log_file = open(log_filename, "a")
+    sys.stdout = log_file
+    sys.stderr = log_file
+    print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Start sesji, pierwszy plik: {filename}")
+
+headless = os.environ.get("DISPLAY") is None
+if not headless:
+    exit(0)
 
 # --- Ustawienia GPIO ---
 IN1 = 29
@@ -202,3 +239,11 @@ finally:
     TurnEnginesOff()
     cam.release()
     GPIO.cleanup()
+
+print(f"✅ Sesja zakończona. Log zapisany w: {log_filename}")
+
+if log_filename:
+    print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Koniec programu")
+    sys.stdout = sys.__stdout__
+    sys.stderr = sys.__stderr__
+    log_file.close()
