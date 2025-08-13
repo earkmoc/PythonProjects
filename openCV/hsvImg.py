@@ -2,6 +2,7 @@ import os
 import cv2
 import math
 import numpy as np
+from datetime import datetime
 # import tkinter as tk
 # from tkinter import ttk
 
@@ -231,7 +232,7 @@ while True:
 
     cv2.rectangle(frame, ((int)(w/2) - 3, h - 15 - 3), ((int)(w/2) + 3, h - 15 + 3), green, 1)
 
-    aimX, aimY = (int)(w/2), h - 15
+    aim = (aimX, aimY) = (int)(w/2), h - 15
     min_distance = float("inf")
     distance_thresold = 10
     closest_center = None
@@ -246,6 +247,20 @@ while True:
             if distance < min_distance and distance > distance_thresold: 
                 min_distance = distance 
                 closest_center = (rect_center_x, rect_center_y)
+
+    tolerance = 60
+    if closest_center:
+        dx = closest_center[0] - aimX
+        nowStr = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+        print(nowStr, aim, closest_center, dx, min_distance)
+        if dx < -tolerance:
+            print(nowStr, "left")
+        elif dx > tolerance:
+            print(nowStr, "right")
+        else:
+            print(nowStr, "ahead")
+    else:
+        print(nowStr, "stop")
 
     if closest_center: 
         cv2.line(frame, (aimX, aimY), closest_center, yellow, 1)

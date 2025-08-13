@@ -69,33 +69,43 @@ speed = 100
 prevState = "stop"
 
 
-def TurnEnginesOff():
+def SetPrevState(state):
+    global prevState
+    prevState = state
+
+
+def TurnEnginesOff(timeStr):
     GPIO.output([IN1, IN2, IN3, IN4], (GPIO.LOW, GPIO.LOW, GPIO.LOW, GPIO.LOW))
-    prevState = "stop"
+    print(timeStr, prevState, 'stop')
+    SetPrevState("stop")
 
 
-def TurnEnginesOn():
+def TurnEnginesOn(timeStr):
     SetLeftWheels(True)
     SetRightWheels(True)
-    prevState = "start"
+    print(timeStr, prevState, 'start')
+    SetPrevState("start")
 
 
-def TurnEnginesBack():
+def TurnEnginesBack(timeStr):
     SetLeftWheels(False)
     SetRightWheels(False)
-    prevState = "back"
+    print(timeStr, prevState, 'back')
+    SetPrevState("back")
 
 
-def TurnLeft():
+def TurnLeft(timeStr):
     SetLeftWheels(True)
     SetRightWheels(False)
-    prevState = "left"
+    print(timeStr, prevState, 'left')
+    SetPrevState("left")
 
 
-def TurnRight():
+def TurnRight(timeStr):
     SetLeftWheels(False)
     SetRightWheels(True)
-    prevState = "right"
+    print(timeStr, prevState, 'right')
+    SetPrevState("right")
 
 
 def SetLeftWheels(ahead):
@@ -239,29 +249,23 @@ try:
         if closest_center:
             dx = closest_center[0] - aimX
             nowStr = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-            print(nowStr, "turning: ", closest_center, dx)
+            print(nowStr, closest_center, dx, min_distance)
             if dx < -tolerance:
                 if prevState == "right":
-                    TurnEnginesOn()
-                    print(nowStr, "ahead")
+                    TurnEnginesOn(nowStr)
                     time.sleep(1)
                 else:
-                    TurnLeft()
-                    print(nowStr, "left")
+                    TurnLeft(nowStr)
             elif dx > tolerance:
                 if prevState == "left":
-                    TurnEnginesOn()
-                    print(nowStr, "ahead")
+                    TurnEnginesOn(nowStr)
                     time.sleep(1)
                 else:
-                    TurnRight()
-                    print(nowStr, "right")
+                    TurnRight(nowStr)
             else:
-                TurnEnginesOn()
-                print(nowStr, "ahead")
+                TurnEnginesOn(nowStr)
         else:
-            TurnEnginesOff()
-            print(nowStr, "stop")
+            TurnEnginesOff(nowStr)
 
         # time.sleep(1)
 
