@@ -15,6 +15,11 @@ import math
 import numpy as np
 import Jetson.GPIO as GPIO
 
+red = (0, 0, 255)
+green = (0, 255, 0)
+blue = (255, 0, 0)
+yellow = (0, 255, 255)
+
 delay_start = 5
 print(f"⏳ Czekam {delay_start} s na stabilizację systemu...")
 time.sleep(delay_start)
@@ -26,37 +31,49 @@ log_filename = None
 output_dir = "/home/arkadiusz/Desktop/captured_images"
 os.makedirs(output_dir, exist_ok=True)
 
-pattern = re.compile(r"^\d{8}_(\d+)_\d{6}\.txt$")
+pattern = re.compile(
+    r"^(\d{8})_(\d+)_"
+    r"(\d+)-(\d+)-(\d+) "
+    r"(\d+):(\d+):(\d+)"
+    r"(?:\.(\d+))?"     # ← opcjonalne milisekundy
+    r"\.jpg$"
+)
+
 max_num = 0
 for fname in os.listdir(output_dir):
     match = pattern.match(fname)
     if match:
-        num = int(match.group(1))
+        num = int(match.group(2))
         if num > max_num:
             max_num = num
 
 count4Folder = max_num
 session_date = datetime.now().strftime("%Y%m%d")
-
 count4Folder += 1
-current_time = datetime.now().strftime("%H%M%S")
-filename = os.path.join(output_dir, f"{session_date}_{count4Folder:04d}_{current_time}.jpg")
+
+
+def NowStr():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+
+
+def ImgFileName():
+    return os.path.join(output_dir, f"{session_date}_{count4Folder:04d}_{NowStr()}.jpg")
+
+
+filename = ImgFileName()
 
 if log_filename is None:
-    parts = filename.rsplit('_', 2)
-    time_str = parts[2].split('.')[0]
-    time_obj = datetime.strptime(time_str, "%H%M%S") - timedelta(seconds=1)
-    new_time_str = time_obj.strftime("%H%M%S")
-    log_filename = os.path.join(output_dir, f"{parts[0]}_{parts[1]}_{new_time_str}.txt")
+    log_filename = os.path.join(output_dir, f"{filename.split('.')[0]}.txt")
 
     # --- Przekierowanie logów ---
     log_file = open(log_filename, "a")
     sys.stdout = log_file
     sys.stderr = log_file
-    print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Start sesji")
+    print(f"{NowStr()} | Start sesji")
 
-if os.path.exists("/tmp/.X11-unix"):
-    exit(0)
+print(os.path.exists("/tmp/.X11-unix"))
+# if os.path.exists("/tmp/.X11-unix"):
+# exit(0)
 
 # --- Ustawienia GPIO ---
 IN1 = 29
@@ -132,8 +149,9 @@ pwmB = GPIO.PWM(ENB, 50)
 pwmB.start(speed)
 
 # --- Kamera i katalog ---
-w, h, flip = 320, 240, 0
+w, h, flip = 640, 480, 0
 delay_start = 5
+esc = 27
 
 print(f"⏳ Czekam {delay_start} s na stabilizację systemu...")
 time.sleep(delay_start)
@@ -141,7 +159,7 @@ time.sleep(delay_start)
 camSet = (
     f"nvarguscamerasrc ! video/x-raw(memory:NVMM), width=3264, height=2464,"
     f" format=NV12, framerate=21/1 ! nvvidconv flip-method={flip}"
-    f" ! video/x-raw, width={w}, height={h}, format=BGRx ! videoconvert"
+    f" ! video/x-raw, width=3264, height=2464, format=BGRx ! videoconvert"
     f" ! video/x-raw, format=BGR ! appsink drop=1 max-buffers=1"
 )
 cam = cv2.VideoCapture(camSet)
@@ -190,6 +208,9 @@ def CreateFGMask(hsv):
 try:
     while True:
 
+        if cv2.waitKey(1) == esc:
+            break
+
         if datetime.now() - start_time >= limit_duration:
             break
 
@@ -207,15 +228,15 @@ try:
         frame = cv2.resize(img, (w, h))
 
         # hide the horizon
-        cv2.rectangle(frame, (0, 0), (w, 40), (0, 0, 0), -1)
+        cv2.rectangle(frame, (0, 0), (w, 80), (0, 0, 0), -1)
 
         # hide the weels
-        radius = 60
-        dw = 35
-        dh = 9
-        wheel1x = 0 + dw + 22
+        radius = 120
+        dw = 70
+        dh = 20
+        wheel1x = 0 + dw + 44
         wheel1y = h - dh
-        wheel2x = w - dw - 27
+        wheel2x = w - dw - 54
         wheel2y = h - dh
         cv2.circle(frame, (wheel1x, wheel1y), radius, (0, 0, 0), -1)
         cv2.circle(frame, (wheel2x, wheel2y), radius, (0, 0, 0), -1)
@@ -228,44 +249,60 @@ try:
 
         contours, _ = cv2.findContours(FGMask_HSV_Otsu, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        aimX, aimY = (int)(w/2), h - 15
+        aimX, aimY = (int)(w/2), h - 30
         min_distance = float("inf")
-        distance_thresold = 10
+        distance_thresold = 20
         closest_center = None
 
-        for contour in contours:
+        for i, contour in enumerate(contours):
             area = cv2.contourArea(contour)
-            if area >= 50:
+            if area >= 200:
                 x, y, ww, hh = cv2.boundingRect(contour)
                 rect_center_x = int(x + ww / 2)
                 rect_center_y = int(y + hh / 2)
+
+                cv2.drawContours(frame, [contour], -1, blue, 3)
+                cv2.rectangle(frame, (x, y), (x+ww, y+hh), red, 2)
+                cv2.putText(frame, f"{i}", ((rect_center_x, rect_center_y)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, green, 2)
+
                 distance = math.hypot(aimX - rect_center_x, aimY - rect_center_y)
                 if distance < min_distance and distance > distance_thresold:
                     min_distance = distance
                     closest_center = (rect_center_x, rect_center_y)
-                    print("countour: ", closest_center, distance)
+                    closest_contour_id = i
 
-        tolerance = 30
+        # aim
+        cv2.rectangle(frame, (aimX - 3, aimY - 3), (aimX + 3, aimY + 3), green, 1)
+
+        tolerance = 60
         if closest_center:
+            cv2.line(frame, (aimX, aimY), closest_center, yellow, 1)
+            filename = ImgFileName()
+            print(NowStr(), filename)
+            if cv2.imwrite(filename, frame):
+                with open(filename, "rb") as f:
+                    f.flush
+                    os.fsync(f.fileno())
+            count4Folder += 1
+
             dx = closest_center[0] - aimX
-            nowStr = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-            print(nowStr, closest_center, dx, min_distance)
+            print(NowStr(), closest_contour_id, closest_center, dx, min_distance)
             if dx < -tolerance:
                 if prevState == "right":
-                    TurnEnginesOn(nowStr)
+                    TurnEnginesOn(NowStr())
                     time.sleep(1)
                 else:
-                    TurnLeft(nowStr)
+                    TurnLeft(NowStr())
             elif dx > tolerance:
                 if prevState == "left":
-                    TurnEnginesOn(nowStr)
+                    TurnEnginesOn(NowStr())
                     time.sleep(1)
                 else:
-                    TurnRight(nowStr)
+                    TurnRight(NowStr())
             else:
-                TurnEnginesOn(nowStr)
+                TurnEnginesOn(NowStr())
         else:
-            TurnEnginesOff(nowStr)
+            TurnEnginesOff(NowStr())
 
         # time.sleep(1)
 
@@ -273,14 +310,14 @@ except Exception as e:
     print(f"❌ Błąd: {e}")
 
 finally:
-    TurnEnginesOff()
+    TurnEnginesOff(NowStr())
     cam.release()
     GPIO.cleanup()
 
 print(f"✅ Sesja zakończona. Log zapisany w: {log_filename}")
 
 if log_filename:
-    print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Koniec programu")
+    print(f"{NowStr()} | Koniec programu")
     sys.stdout = sys.__stdout__
     sys.stderr = sys.__stderr__
     log_file.close()

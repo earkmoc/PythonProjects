@@ -238,14 +238,14 @@ while True:
     closest_center = None
 
     for i, contour in enumerate(contours):
-        area = cv2.contourArea(contour) 
-        if area >= 50: 
-            x, y, ww, hh = cv2.boundingRect(contour) 
-            rect_center_x = int(x + ww / 2) 
-            rect_center_y = int(y + hh / 2) 
-            distance = math.hypot(aimX - rect_center_x, aimY - rect_center_y) 
-            if distance < min_distance and distance > distance_thresold: 
-                min_distance = distance 
+        area = cv2.contourArea(contour)
+        if area >= 50:
+            x, y, ww, hh = cv2.boundingRect(contour)
+            rect_center_x = int(x + ww / 2)
+            rect_center_y = int(y + hh / 2)
+            distance = math.hypot(aimX - rect_center_x, aimY - rect_center_y)
+            if distance < min_distance and distance > distance_thresold:
+                min_distance = distance
                 closest_center = (rect_center_x, rect_center_y)
 
     tolerance = 60
@@ -262,7 +262,7 @@ while True:
     else:
         print(nowStr, "stop")
 
-    if closest_center: 
+    if closest_center:
         cv2.line(frame, (aimX, aimY), closest_center, yellow, 1)
         # cv2.circle(frame, closest_center, 5, yellow, -1)
         # cv2.circle(frame, (aimX, aimY), 5, yellow, -1)
